@@ -1,26 +1,29 @@
-import React from 'react';
-import logo from './logo.svg';
-import './App.css';
+// src/App.tsx
+import * as React from 'react';
+import { Admin, Resource } from 'react-admin';
+import dataProvider from './provider/dataProvider';
+import { theme } from './theme';
 
-function App() {
-  return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.tsx</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
-  );
-}
+// components
+import Dashboard from './components/Dashboard';
+import Layout from './components/Layout';
+
+// resources
+// import users from './resources/users';
+// import profiles from './resources/profiles';
+import waves from './resources/waves';
+
+const App = () => (
+  <Admin
+    dataProvider={dataProvider}
+    dashboard={Dashboard}
+    title="Waves of Fame"
+    theme={theme}
+    layout={Layout}
+  >
+    <Resource name="waves" {...waves} />
+    <Resource name="hands" intent="registration" />
+  </Admin>
+);
 
 export default App;

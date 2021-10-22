@@ -1,0 +1,252 @@
+#!/bin/bash
+yarn add react-admin react-redux redux-saga history ra-data-fakerest;
+yarn add -D @types/react-redux;
+mkdir src/resources src/resources/users src/resources/profiles src/store src/provider src/components src/components/Dashboard;
+# resource guessers
+read -r -d '' ListGuesser <<-EOF
+import * as React from 'react';
+import { ListGuesser } from 'react-admin'
+
+export default ListGuesser;
+EOF;
+read -r -d '' EditGuesser <<-EOF
+import * as React from 'react';
+import { EditGuesser } from 'react-admin'
+
+export default EditGuesser;
+EOF;
+read -r -d '' ShowGuesser <<-EOF
+import * as React from 'react';
+import { ShowGuesser } from 'react-admin'
+
+export default ShowGuesser;
+EOF;
+read -r -d '' CreateDefault <<-EOF
+import * as React from 'react';
+
+export default '';
+EOF;
+# create resources
+read -r -d '' indexTSX <<-EOF
+// src/resources/index.tsx
+import users from './users';
+import profiles from './profiles';
+
+export default {
+    users,
+    profiles
+};
+EOF;
+# resources/users
+echo "$indexTSX" > src/resources/index.tsx;
+read -r -d '' indexTSX <<-EOF
+// src/resources/users/index.tsx
+import UsersList from './UsersList';
+import UserShow from './UserShow';
+import UserEdit from './UserEdit';
+// import UserCreate from './UserCreate;';
+
+export default {
+    list: UsersList,
+    show: UserShow,
+    edit: UserEdit,
+    // create: UserCreate,
+    // icon:
+};
+EOF;
+echo "$indexTSX" > scr/resources/users/index.tsx
+echo "// scr/resources/users/UsersList.tsx" > scr/resources/users/UsersList.tsx;
+echo "$ListGuesser" >> scr/resources/users/UsersList.tsx;
+echo "// scr/resources/users/UserShow.tsx" > scr/resources/users/UserShow.tsx;
+echo "$ShowGuesser" >> scr/resources/users/UserShow.tsx;
+echo "// scr/resources/users/UserEdit.tsx" > scr/resources/users/UserEdit.tsx;
+echo "$ShowGuesser" >> scr/resources/users/UserEdit.tsx;
+echo "// scr/resources/users/UserCreate.tsx" > scr/resources/users/UserCreate.tsx;
+echo "$CreateDefault" >> scr/resources/users/UserCreate.tsx;
+
+# resources/accounts
+echo "$indexTSX" > src/resources/index.tsx;
+read -r -d '' indexTSX <<-EOF
+// src/resources/profiles/index.tsx
+import AccountsList from './ProfilesList';
+import ProfileShow from './ProfileShow';
+import ProfileEdit from './ProfileEdit';
+// import ProfileCreate from './ProfileCreate;';
+
+export default {
+    list: ProfilesList,
+    show: ProfileShow,
+    edit: ProfileEdit,
+    // create: ProfileCreate,
+    // icon:
+};
+EOF;
+echo "$indexTSX" > scr/resources/profiles/index.tsx
+echo "// scr/resources/profiles/ProfilesList.tsx" > scr/resources/profiles/ProfilesList.tsx;
+echo "$ListGuesser" >> scr/resources/profiles/ProfilesList.tsx;
+echo "// scr/resources/profiles/ProfileShow.tsx" > scr/resources/users/ProfileShow.tsx;
+echo "$ShowGuesser" >> scr/resources/profiles/ProfileShow.tsx;
+echo "// scr/resources/profiles/ProfileEdit.tsx" > scr/resources/users/ProfileEdit.tsx;
+echo "$ShowGuesser" >> scr/resources/profiles/ProfileEdit.tsx;
+echo "// scr/resources/profiles/ProfileCreate.tsx" > scr/resources/profiles/ProfileCreate.tsx;
+echo "$CreateDefault" >> scr/resources/profiles/ProfileCreate.tsx;
+
+# app
+read -r -d '' appTSX <<-EOF
+// src/App.tsx
+import * as React from "react";
+import { Provider } from 'react-redux';
+import { Admin, Resource } from 'react-admin';
+
+// store
+import store from './store';
+
+// components
+import Dashboard from './components/Dashboard';
+
+// resources
+import { users, posts } from './resources';
+
+const App = () => (
+    <Provider
+        store={createAdminStore({
+            authProvider,
+            dataProvider,
+            history,
+        })}
+    >
+        <Admin
+            authProvider={authProvider}
+            dataProvider={dataProvider}
+            history={history}
+            title="My Admin"
+        >
+            <Resource name="users" {...users} />
+            <Resource name="profiles" {...profiles} />
+        </Admin>
+    </Provider>
+);
+
+export default App;
+EOF
+echo "$appTSX" > src/App.tsx;
+# store
+read -r -d '' createStoreTS <<-EOF
+// src/store/createStore.ts
+import { applyMiddleware, combineReducers, compose, createStore } from 'redux';
+import { routerMiddleware, connectRouter } from 'connected-react-router';
+import createSagaMiddleware from 'redux-saga';
+import { all, fork } from 'redux-saga/effects';
+import {
+    adminReducer,
+    adminSaga,
+    USER_LOGOUT,
+} from 'react-admin';
+
+// import sagas from './sagas';
+
+export default ({
+    authProvider,
+    dataProvider,
+    history,
+}) => {
+    const reducer = combineReducers({
+        admin: adminReducer,
+        router: connectRouter(history),
+        // add your own reducers here
+    });
+    const resettableAppReducer = (state, action) =>
+        reducer(action.type !== USER_LOGOUT ? state : undefined, action);
+
+    const saga = function* rootSaga() {
+        yield all(
+            [
+                adminSaga(dataProvider, authProvider),
+                // add your own sagas here
+            ].map(fork)
+        );
+    };
+    const sagaMiddleware = createSagaMiddleware();
+
+    const composeEnhancers =
+        (process.env.NODE_ENV === 'development' &&
+            typeof window !== 'undefined' &&
+            window.__REDUX_DEVTOOLS_EXTENSION_COMPOSE__ &&
+            window.__REDUX_DEVTOOLS_EXTENSION_COMPOSE__({
+                trace: true,
+                traceLimit: 25,
+            })) ||
+        compose;
+  
+    const store = createStore(
+        resettableAppReducer,
+        { /* set your initial state here */ },
+        composeEnhancers(
+            applyMiddleware(
+                sagaMiddleware,
+                routerMiddleware(history),
+                // add your own middlewares here
+            ),
+            // add your own enhancers here
+        ),        
+    );
+    sagaMiddleware.run(saga);
+    return store;
+};
+EOF
+echo "$createStoreTS" > src/store/createStore.ts;
+read -r -d '' storeTS <<-EOF
+// src/store/index.tsx
+import { createAdminStore } from 'react-admin';
+import { createHashHistory } from 'history';
+import { authProvider, dataProvider } from '../provider';
+
+export const history = createHashHistory();
+
+const store = createAdminStore({
+            authProvider,
+            dataProvider,
+            history,
+        });
+export default store;
+EOF
+echo "$storeTS" > src/store/index.ts;
+# provider
+read -r -d '' authProviderTS <<-EOF
+// src/provider/authProvider.ts
+const authProvider = () => Promise.resolve();
+
+export default authProvider;
+EOF
+echo "$authProviderTS" > src/provider/authProvider.ts;
+read -r -d '' dataProviderTS <<-EOF
+// src/provider/dataProvider.ts
+import fakeDataProvider from 'ra-data-fakerest';
+
+const dataProvider = fakeDataProvider({
+    users: [
+        { id: 0, name: 'User1', email: 'user1@example.com' },
+        { id: 1, name: 'User2', email: 'user2@example.com' },
+    ],
+    profiles: [
+        { id: 0, user_id: 0, name: 'User1- Profile 1' },
+        { id: 2, user_id: 0, name: 'User1- Profile 2' },
+        { id: 3, user_id: 1, name: 'User2- Profile 1' },
+    ],
+})
+
+export default dataProvider;
+EOF
+echo "$dataProviderTS" > src/provider/dataProvider.ts;
+read -r -d '' providerIndexTS <<-EOF
+// src/provider/index.ts
+import dataProvider from './dataProvider';
+import authProvider from './authProvider';
+
+export default {
+    dataProvider,
+    authProvider
+};
+EOF
+echo "$providerIndexTS" > src/provider/index.ts;
+
